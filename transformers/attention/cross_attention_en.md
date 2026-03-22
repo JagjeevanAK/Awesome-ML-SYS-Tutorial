@@ -1,6 +1,6 @@
 # Cross-Attention Mechanism in Transformers
 
-## [English version](./cross_attention_en.md) | [简体中文](./cross_attention.md)
+## [English version](./cross_attention_en.md) | [Simplified Chinese](./cross_attention.md)
 ## Introduction
 
 Cross-attention mechanism is a key part of the Transformer model. It allows the decoder to access and use relevant information from the encoder. This helps the model focus on important details, ensuring tasks like translation are accurate.
@@ -87,4 +87,3 @@ In tasks like machine translation, cross-attention helps the system align words 
 3. **Text Summarization**: When we want to make a long piece of text shorter, cross-attention helps the model figure out which parts of the original text are most important. It helps create a summary that captures the main ideas.
 
 4. **MultiModel**: Cross-attention mechanism in transformers not only enhances current model capabilities but also opens avenues for future advancements in interpretability, adaptability and scalability, enabling richer interactions with external knowledge bases and other systems.
-

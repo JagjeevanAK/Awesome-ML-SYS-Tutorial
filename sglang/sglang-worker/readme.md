@@ -1,6 +1,6 @@
 # Walk Through SGLang / VLLM Worker
 
-## [English version](./readme.md) | [简体中文](./readme-CN.md)
+## [English version](./readme.md) | [Simplified Chinese](./readme-CN.md)
 
 To enable SGLang to support OpenRLHF interfaces, we need to implement two [interfaces](https://github.com/OpenRLHF/OpenRLHF/blob/main/openrlhf/trainer/ray/vllm_worker_wrap.py) in SGLang:
 - `init_process_group`

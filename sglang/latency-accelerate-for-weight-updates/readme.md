@@ -1,6 +1,6 @@
 # Latency Accelerate for Weight Updates
 
-## [English version](./readme.md) | [简体中文](./readme-CN.md)
+## [English version](./readme.md) | [Simplified Chinese](./readme-CN.md)
 
 ## Preface
 
@@ -103,7 +103,7 @@ class TestParameterUpdateGroup(unittest.TestCase):
             os.environ["NCCL_CUMEM_ENABLE"] = "0"
             os.environ["NCCL_NVLS_ENABLE"] = "0"
 
-            # 加载 instruct 模型
+#Load instruct model
             torch.cuda.synchronize()
             time_begin = time.time()
             cls.hf_instruct_model = AutoModelForCausalLM.from_pretrained(
@@ -113,7 +113,7 @@ class TestParameterUpdateGroup(unittest.TestCase):
             time_end = time.time()
             print(f"rank {rank} load instruct model time: {time_end - time_begin:.3f}s")
 
-            # 加载 base 模型
+#Load base model
             torch.cuda.synchronize()
             time_begin = time.time()
             base_model_name = model_name.replace("-Instruct", "")
@@ -127,7 +127,7 @@ class TestParameterUpdateGroup(unittest.TestCase):
             cls.hf_instruct_params = []
             cls.hf_base_params = []
 
-            # 获取参数
+# Get parameters
             torch.cuda.synchronize()
             time_begin = time.time()
             print(f"get parameter in hf instruct model and base model")
@@ -155,7 +155,7 @@ class TestParameterUpdateGroup(unittest.TestCase):
             param_queue.put(("hf_instruct_params", cls.hf_instruct_params))
             param_queue.put(("hf_base_params", cls.hf_base_params))
 
-            # 初始化进程组
+#Initialize process group
             torch.cuda.synchronize()
             time_begin = time.time()
             print(f"rank {rank} init custom process group")
@@ -170,7 +170,7 @@ class TestParameterUpdateGroup(unittest.TestCase):
             time_end = time.time()
             print(f"rank {rank} init process group time: {time_end - time_begin:.3f}s")
 
-            # 广播参数
+# Broadcast parameters
             torch.cuda.synchronize()
 
             print(f"rank {rank} broadcast parameter")
@@ -197,7 +197,7 @@ class TestParameterUpdateGroup(unittest.TestCase):
             torch.cuda.empty_cache()
 
         elif rank == 1:
-            # 初始化引擎
+#Initialize engine
             torch.cuda.synchronize()
             time_begin = time.time()
             cls.engine = sgl.Engine(
@@ -210,7 +210,7 @@ class TestParameterUpdateGroup(unittest.TestCase):
             time_end = time.time()
             print(f"rank {rank} init engine time: {time_end - time_begin:.3f}s")
 
-            # 获取 instruct 参数
+# Get instruct parameters
             torch.cuda.synchronize()
             time_begin = time.time()
             cls.engine_instruct_params = []
@@ -229,7 +229,7 @@ class TestParameterUpdateGroup(unittest.TestCase):
 
             param_queue.put(("engine_instruct_params", cls.engine_instruct_params))
 
-            # 初始化参数更新组
+#Initialize parameter update group
             torch.cuda.synchronize()
             time_begin = time.time()
             print(f"rank {rank} init parameter update group")
@@ -247,7 +247,7 @@ class TestParameterUpdateGroup(unittest.TestCase):
                 f"rank {rank} init parameter update group time: {time_end - time_begin:.3f}s"
             )
 
-            # 更新分布式参数
+# Update distributed parameters
             torch.cuda.synchronize()
             time_begin = time.time()
             print(f"rank {rank} update parameter from distributed")
@@ -267,7 +267,7 @@ class TestParameterUpdateGroup(unittest.TestCase):
                 )
 
             torch.cuda.synchronize()
-            # 获取 base 参数
+# Get base parameter
             time_begin = time.time()
             cls.engine_base_params = []
             print(f"rank {rank} get parameter in engine base model")
@@ -297,7 +297,7 @@ class TestParameterUpdateGroup(unittest.TestCase):
         if torch.cuda.device_count() >= 4:
             cls.test_suits.append(2)
 
-        # 初始化每个模型的 state_dict_key_to_shape
+# Initialize state_dict_key_to_shape of each model
         cls.model_state_dict_shapes = {}
         for model_name in cls.model_names:
             torch.cuda.synchronize()
@@ -702,7 +702,7 @@ class TestProcessGroupInit(unittest.TestCase):
         torch.cuda.set_device(rank)
         
         if rank == 0:
-            # 初始化进程组
+#Initialize process group
             print(f"rank {rank} init custom process group")
             torch.cuda.synchronize()
             time_begin = time.time()
@@ -719,13 +719,13 @@ class TestProcessGroupInit(unittest.TestCase):
             print(f"rank {rank} init process group time: {time_end - time_begin:.3f}s")
 
         elif rank == 1:
-            # 初始化引擎的进程组
+# Initialize the engine process group
             print(f"rank {rank} init parameter update group")
             torch.cuda.synchronize()
             time_begin = time.time()
             from sglang import Engine
             engine = Engine(
-                model_path=DEFAULT_SMALL_MODEL_NAME_FOR_TEST,  # 使用小模型测试
+model_path=DEFAULT_SMALL_MODEL_NAME_FOR_TEST, # Use small model testing
                 random_seed=42,
                 base_gpu_id=rank,
                 tp_size=1,
@@ -750,7 +750,7 @@ class TestProcessGroupInit(unittest.TestCase):
             engine.shutdown()
 
     def test_process_group_init(self):
-        assert torch.cuda.device_count() >= 2, "需要至少2个GPU"
+assert torch.cuda.device_count() >= 2, "Requires at least 2 GPUs"
         
         torch.cuda.synchronize()
         time_begin = time.time()
@@ -764,7 +764,7 @@ class TestProcessGroupInit(unittest.TestCase):
         
         torch.cuda.synchronize()
         time_end = time.time()
-        print(f"总耗时: {time_end - time_begin:.3f}s")
+print(f"Total time taken: {time_end - time_begin:.3f}s")
 
 if __name__ == "__main__":
     unittest.main()
@@ -813,7 +813,7 @@ class TestParameterUpdateLatency(unittest.TestCase):
             os.environ["NCCL_CUMEM_ENABLE"] = "0"
             os.environ["NCCL_NVLS_ENABLE"] = "0"
             
-            # 初始化进程组
+#Initialize process group
             torch.cuda.synchronize()
             time_begin = time.time()
             cls.group = init_custom_process_group(
@@ -827,7 +827,7 @@ class TestParameterUpdateLatency(unittest.TestCase):
             time_end = time.time()
             print(f"Rank {rank} init process group time: {time_end - time_begin:.3f}s")
             
-            # 广播参数
+# Broadcast parameters
             torch.cuda.synchronize()
             time_begin_broadcast = time.time()
             for name, shape in state_dict_key_to_shape.items():
@@ -845,7 +845,7 @@ class TestParameterUpdateLatency(unittest.TestCase):
             param_queue.put(("rank0_done", True))
 
         elif rank == 1:
-            # 初始化引擎
+#Initialize engine
             torch.cuda.synchronize()
             time_begin = time.time()
             cls.engine = sgl.Engine(
@@ -858,7 +858,7 @@ class TestParameterUpdateLatency(unittest.TestCase):
             time_end = time.time()
             print(f"Rank {rank} init engine time: {time_end - time_begin:.3f}s")
             
-            # 初始化参数更新组
+#Initialize parameter update group
             torch.cuda.synchronize()
             time_begin = time.time()
             cls.engine.init_parameter_update_group(
@@ -873,7 +873,7 @@ class TestParameterUpdateLatency(unittest.TestCase):
             time_end = time.time()
             print(f"Rank {rank} init parameter update group time: {time_end - time_begin:.3f}s")
             
-            # 更新参数并测量时间
+# Update parameters and measure time
             torch.cuda.synchronize()
             time_begin_update = time.time()
             for name, shape in state_dict_key_to_shape.items():
@@ -907,7 +907,7 @@ class TestParameterUpdateLatency(unittest.TestCase):
         if torch.cuda.device_count() >= 4:
             cls.test_suits.append(2)
 
-        # 初始化每个模型的 state_dict_key_to_shape
+# Initialize state_dict_key_to_shape of each model
         cls.model_state_dict_shapes = {}
         for model_name in cls.model_names:
             torch.cuda.synchronize()

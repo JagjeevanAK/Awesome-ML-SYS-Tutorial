@@ -1,8 +1,8 @@
 # SGLang Code Walk Through
 
-## [English version](./README-eng.md) | [简体中文](./readme-CN.md)
+## [English version](./README-eng.md) | [Simplified Chinese](./readme-CN.md)
 
-<!-- [TODO: 概念和代码的名字？概念是概念，代码是代码，对我们的 workflow 图明确点，然后把 KV cache management 加进来] -->
+<!-- [TODO: Concept and code names? Concepts are concepts, code is code, be clear about our workflow diagram, and then add KV cache management] -->
 
 This doc serve as a developer-level guidance and provide a brief code walkthrough of SGLang's backend, tracing the path of how requests are processed, as shown in the following figure.
 
@@ -40,7 +40,7 @@ Specifically, requests flow through the following process to get responses:
 
 ## Acknowledge And Notation
 
-<!-- [TODO: offical 可以不用 Acknowledge，仅供内部传阅，和宣传稿平级] -->
+<!-- [TODO: offical does not need Acknowledge, it is only for internal circulation, and is at the same level as the publicity draft] -->
 
 All the discussions are based on release [v0.4.0](https://github.com/sgl-project/sglang/tree/f8b0326934bacb7a7d4eba68fb6eddebaa6ff751). We sincerely appreciate [Chenyang Zhao](https://zhaochenyang20.github.io/Chayenne/), [Wenxuan Tan](https://github.com/Edenzzzz),  [Simon Veitner](https://simveit.github.io/), [Shuai Shi](https://shuaills.github.io/), [Shizhe Diao](https://shizhediao.github.io/), [Shending Hu](https://shengdinghu.github.io/), [Xiaoyu Zhang](https://github.com/BBuf), [agiping](https://github.com/agiping)、[Zhizhou Sha](https://jamessand.github.io/) for their contribution to this document.
 

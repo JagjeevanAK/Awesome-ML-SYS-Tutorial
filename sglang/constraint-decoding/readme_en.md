@@ -1,6 +1,6 @@
 # Understanding Constraint Decoding: Concepts, Methods, and Optimizations
 
-【[English](readme_en.md) | [中文](readme.md)】
+【[English](readme_en.md) | [Chinese](readme.md)】
 This article was written as study notes while developing SGLang's [constraint decoding tutorial](https://docs.sglang.ai/backend/structured_outputs.html) with [Shuai Shi](https://shuaills.github.io/). While SGLang's documentation focuses on usage, this article elaborates on the concrete concepts and optimization methods behind constraint decoding.
 
 ## Concepts

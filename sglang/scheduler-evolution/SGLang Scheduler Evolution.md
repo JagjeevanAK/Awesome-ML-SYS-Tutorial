@@ -1,6 +1,6 @@
 # Evolution of SGLang Scheduler
 
-## [English version](./SGLang%20Scheduler%20Evolution.md) | [简体中文](./SGLang%20Scheduler%20技术变迁.md)
+## [English version](./SGLang%20Scheduler%20Evolution.md) | [Simplified Chinese](./SGLang%20Scheduler%20Technological Change.md)
 
 > About the author: I am Liu Zhiyi, a second-year master's student in UESTC(graduating in 2027). I am currently looking for an internship in llm inference acceleration. Please feel free to contact me! tomlzy213@gmail.com
 

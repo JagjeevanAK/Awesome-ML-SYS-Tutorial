@@ -180,23 +180,23 @@ The previous chapter established the core decision of "unifying slow head and fa
 The first engineering challenge is deferred graph capture, which directly corresponds to the last of the five constraints: graph doesn't auto-update after recording. Specifically, let's examine the initialization sequence in [`create_s2pro_sglang_engine()`](https://github.com/sgl-project/sglang-omni/blob/cd9aaf3/sglang_omni/models/fishaudio_s2_pro/factory.py) in `factory.py`:
 
 ```python
-# Step 1: 暂时禁用 CUDA Graph
+# Step 1: Temporarily disable CUDA Graph
 want_cuda_graph = not server_args.disable_cuda_graph
 server_args.disable_cuda_graph = True
 
-# Step 2: 初始化 ModelWorker（此时不 capture graph）
+# Step 2: Initialize ModelWorker (do not capture the graph yet)
 model_worker = ModelWorker(config=ModelWorkerConfig(), server_args=server_args, gpu_id=gpu_id)
 
-# Step 3: BF16 精度修正
+# Step 3: Apply the BF16 precision fix
 _truncate_rope_to_bf16(model_worker.model_runner.model)
 
-# Step 4: 预分配 fast head 的 static KV cache
+# Step 4: Pre-allocate the fast head's static KV cache
 audio_decoder.setup_caches(max_batch_size=max_bs, dtype=torch.bfloat16)
 
-# Step 5: 分配 persistent buffers + 挂载 audio decoder
+# Step 5: Allocate persistent buffers and attach the audio decoder
 text_model.setup_vq_decode(audio_decoder, ...)
 
-# Step 6: 此时 capture graph——包含完整的 forward + _decode_codebooks
+# Step 6: Capture the graph here, including the full forward + _decode_codebooks
 if want_cuda_graph:
     model_worker.model_runner.init_device_graphs()
 ```
@@ -254,11 +254,11 @@ def _update_vq_buffers(self, model_worker_batch, scheduler_output):
     input_ids = model_worker_batch.input_ids
     bs = input_ids.shape[0]
 
-    # 计算 semantic mask
+    # Compute the semantic mask
     is_semantic = (input_ids >= self._semantic_begin_id) & (input_ids <= self._semantic_end_id)
     text_model._vq_mask[:bs].copy_(is_semantic)
 
-    # 写入每个 request 的 codebook values
+    # Write each request's codebook values
     for i, sched_req in enumerate(scheduler_output.requests):
         data = sched_req.data
         if data._last_codebook_values is not None and is_semantic[i]:

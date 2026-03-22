@@ -1,6 +1,6 @@
 # Scheduler Overview
 
-## [English version](./readme.md) | [简体中文](./readme-CN.md)
+## [English version](./readme.md) | [Simplified Chinese](./readme-CN.md)
 
 > About the Author: Hi, I'm Guanhua Wang, a second-year Master's student in Computer Science at UESTC. I'm currently seeking an internship in inference acceleration. Feel free to get in touch at [281484683@qq.com](mailto:281484683@qq.com)!
 

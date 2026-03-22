@@ -180,7 +180,7 @@ Used for intra-node communication:
 **Tree Algorithm**  
 (See [postscript in torch-distributed notes](../torch-distributed/readme.md#ring-all-reduce-and-tree-all-reduce).）
 
-<!--真的要放在这里吗？-->
+<!-- Should this really go here? -->
 
 ### Communication Protocols
 NCCL implements three protocols:
@@ -199,7 +199,7 @@ NCCL implements three protocols:
 
 ### Topology Optimization
 
-<!--我记得好像有这个东西，有空写吧-->
+<!-- I remember this exists; I can write it up later. -->
 
 ## Common NVIDIA Tools
 Reference: [WeLearnNLP Guide](https://www.yourmetaverse.cn/deep_learning/199/).
@@ -297,7 +297,7 @@ Install via `pip install nvitop` for real-time GPU metrics visualization.
 
 ## SGLang Communication
 
-<!--我还没找到代码在哪里，晚点再说 -->
+<!-- I still have not found where this code lives; I will come back to it later. -->
 
 
 
@@ -309,4 +309,3 @@ Install via `pip install nvitop` for real-time GPU metrics visualization.
 * https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/index.html NCCL docs
 * https://images.nvidia.com/events/sc15/pdfs/NCCL-Woolley.pdf NCCL talk
 * https://nvidia.github.io/TensorRT-LLM/index.html TensorRT-LLM docs
-
