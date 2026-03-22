@@ -85,9 +85,23 @@ To Megatron, the implementation is similar. At the final point, we get the log p
   <img src="./pics/megatron-truly-on-policy.png" alt="Megatron Truly On Policy" width="50%">
 </div>
 
-<!-- 这三张图展示了我们在三种 setting 下（FSDP + VLM + Dense Model，FSDP + LLM + Dense Model，Megatron + LLM + Dense Model ）Truly On Policy 特性的效果。注意到，在开启 Truly On Policy 模式后，训练和推理的 log probs 的绝对差值都严格为 0，这证明了我们 Truly On Policy feature 的有效性。
+<!-- These three figures show the effect of Truly On Policy under three settings:
+FSDP + VLM + Dense Model, FSDP + LLM + Dense Model, and Megatron + LLM + Dense
+Model. After enabling Truly On Policy mode, the absolute difference between
+training and inference log probs becomes strictly zero, which demonstrates the
+effectiveness of this feature.
 
-需要格外强调的是，即便我们已经付出了相当多的努力，Truly On Policy 仍旧处于初始阶段。对于不同的模型架构，各种并行策略，甚至是不同的硬件设备，每个变量都引入了指数级的复杂度。我们仍旧在不断探索和优化 Truly On Policy 的实现，并且如我们前文所述，目前的 Truly On Policy 模式只能对 Valina Dense LLM 模型有效。在 Dense 模型上，我们从未观察到 Miles 因为 training-inference mismatch 而 collapse。因此，即便开启了 Truly On Policy 模式，我们并没有见到 reward 等指标有更好的趋势。而且，Truly On Policy 模式由于会对 Megatron 和 FSDP 的实现进行许多侵入性修改，一方面导致复现困难，另一方面性能上也相比原生实现有一定损失。 -->
+It is also important to emphasize that, despite the work we have already done,
+Truly On Policy is still at an early stage. Different model architectures,
+parallelism strategies, and even hardware platforms each add another layer of
+complexity. We are still exploring and improving the implementation, and as
+noted above, the current Truly On Policy mode only works for vanilla dense LLMs.
+On dense models, we have never observed Miles collapsing because of
+training-inference mismatch. Therefore, even with Truly On Policy enabled, we
+have not seen clearly better reward trends. In addition, Truly On Policy
+requires invasive changes to both Megatron and FSDP, which makes reproduction
+harder and introduces some performance loss compared with the native
+implementations. -->
 
 These three figures demonstrate the effects of our Truly On Policy feature under three different settings (FSDP + VLM + Dense Model, FSDP + LLM + Dense Model, and Megatron + LLM + Dense Model). Notably, after enabling Truly On Policy mode, the absolute difference between training and inference log probs is strictly bit-wise identical, which proves the effectiveness of our Truly On Policy feature.
 
