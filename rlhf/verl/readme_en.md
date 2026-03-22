@@ -1,0 +1,78 @@
+# HybridFlow veRL A brief analysis of the original text
+
+As you all know, I have been serving tea + RLHF on the SGLang team. For the latter, I have been learning the overall framework of veRL during this time, and the idea of ​​hybrid engine is really eye-catching. In fact, members of the SGLang team have been responsible for promoting this work. However, due to the huge intensity of the DeepSeek model support work and the limited energy of the team members, this series of changes has not been able to be upstreamed to the main branch. However, with the release of grok, we will quickly up stream SGLang's support for hybrid engines to the main branch. Here is a brief preview.
+
+Back to this article itself, this is the starting note of the SGLang-veRL series of work, and it also urges myself to learn training and inference co-design more comprehensively.
+
+PS: I have done some analysis based on nemo-aligner and OpenRLHF before. You are welcome to refer to it, and I would like to thank the authors of these frameworks for their wonderful contributions. We are all people who write frameworks. Needless to say, there are ups and downs involved.
+
+- [A brief analysis of mainstream Alignment algorithms and NeMo-Aligner framework](https://zhuanlan.zhihu.com/p/5220718268)
+- [A brief analysis of the calculation process of post-training systems represented by OpenRLHF](https://github.com/zhaochenyang20/Awesome-ML-SYS-Tutorial/blob/main/rlhf/OpenRLHF/readme.md)
+
+## Single-Controller vs Multi-Controller
+
+Before sorting out the introduction, let's first introduce an important concept that veRL relies on - single controller and multi controller.
+
+**In a complex workflow, the single controller has only one program responsible for management, while other sub-modules are only responsible for execution. All control logic is written on a single controller, which is simple to implement and easy to debug. However, the control pressure borne by the single controller is huge. Firstly, the communication intensity is high and the efficiency is worrying. Secondly, if the single controller crashes, the entire system will completely fail. In turn, a multi controller has multiple control programs to manage different sub-modules, and each sub-module is still only responsible for performing its own functions. In this way, the management pressure of a single control program is reduced, and the system becomes more robust and scalable. However, the control logic is scattered in multiple programs, making the implementation complex and difficult to debug. **With this intuitive understanding, let's review the rough workflow of PPO. Note that actors will perform auto-regressive decoding in RLHF, while critic, reward and reference will only prefill and not decode. Therefore, we call the actor's inference specifically rollout, and the inference of other models as inference.
+
+1. Prepare a batch of prompts;
+2. Input the prompts of this batch to the Actor, and rollout to get the responses;
+3. Input prompt + responses to Critic/Reward/Reference, perform inference, and calculate values, reward and log probs respectively. These integrations are called experiences;
+4. Calculate actor loss and critic loss based on experiences in multiple rounds and update Actor and Critic.
+
+From this point on, a natural idea is to use a single controller to manage the entire workflow, and then each sub-module (Actor, Critic, Reward, Reference) is managed by a single controller. However, in this naive implementation, both layers of control structures are single controllers, so the communication overhead within the system is very large. One point that may not be intuitive is that the communication pressure borne by the single controller at the top level responsible for overall scheduling is smaller than that of the single controller of each sub-module.
+
+It can be simply understood that the rollout engine only needs to return prompt + response to the upper-layer controller. The communication volume of the upper and lower layers is at most M level; and the internal communication of the rollout engine is very large. Otherwise, how could NV Link be fully loaded with a communication speed close to T?Therefore, the communication pressure borne by the controller in each sub-component is greater. If this layer is still a single controller, it can be imagined that the efficiency is worrying. This is also true. The mainstream training engines are multi-controller, such as FSDP, Megatron and DeepSpeed. Since the Actor's Training Engine is multi-controller (SPMD specifically), should the Actor's rollout engine also be multi-controller? Theoretically speaking, yes, our intuition tells us that communication between SPMD's training engine and SPMD's rollout engine will be much more efficient than communicating with the rollout engine of a single controller. This intuition also stands up to scrutiny. Both SPMD's training engine and rollout engine adopt a distributed, multi-controller design. Each node can communicate directly point-to-point, which can make full use of high-speed interconnection (such as NVLink or InfiniBand) to achieve parallel data transmission and calculation. Conversely, if the training engine uses SPMD and the rollout engine uses a single controller, the data of all training nodes must be aggregated to a certain control node before the parameter update between the training engine and the rollout engine can be completed. This inevitably introduces communication bottlenecks and the risk of single point failure.
+
+Therefore, SPMD’s training engine and SPMD’s rollout engine are a perfect match. However, due to historical reasons, the current mainstream rollout engine is still dominated by single controller. Therefore, changing SGLang from single controller to SPMD is an important goal of our work. In fact, we already have a mature PR, you can [refer to this branch](https://github.com/fzyzcjy/sglang/tree/feat/overall_verl).
+
+Note: The single controller and SPMD modes described above are just empirical practices, but in fact they describe: the single controller mainly focuses on whether the control flow is single point; while the SPMD mode focuses more on the data execution flow in a distributed scenario. Even a single controller can use SPMD mode for data flow execution.In short, the beginning of this article takes a huge amount of space to briefly introduce single controller and multi controller, and why SGLang needs to change from single controller to multi controller. After understanding these concepts, we can officially enter the introduction of veRL.
+
+## Introduction
+
+As mentioned earlier, multi-contoller can effectively reduce communication pressure and improve system robustness. However, if the top-level controller is also a multi-controller, it will actually be very complicated for users. Modification of the code within a controller requires modification of all dependencies. It’s hard to imagine reading ML researchers willing to accept this.
+
+Therefore, veRL exposes the single controller interface at the upper layer and performs complete encapsulation. Users can freely combine parallel strategies (3D parallelism, ZeRO and FSDP) based on algorithm design and directly assemble sub-modules; within each sub-module, a multi-controller is used to provide strong efficiency. Of course, it may be relatively troublesome to change submodules.
+
+**After having the concepts of single controller and multi-controller, the second core concept of veRL is introduced here: hybrid engine. In the RLHF process, actor model generation and rollout occupy the vast majority of the running time (58.9% in veRL). Moreover, since PPO is an on-policy algorithm, experiences must come from the model itself being trained, so rollout and training must be serialized. If the two use different resource groups, for example, rollout uses 2 cards, and training uses 4 cards, the training resources are idle during rollout, and the rollout resources are idle during training. In any case, a lot of computing resources will be wasted. Therefore, veRL places the training and rollout engines in the same resource group for serial execution. During training, the video memory of the rollout engine is recycled (offloaded to the CPU or directly destructed), and during rollout, the video memory of the training engine is released. This solution of placing different engines of the actor model on the same resource group is called a hybrid engine. **Note that in addition to hybrid engine, similar methods to share resource groups include collocate. Before talking about the collocate strategy, let’s review what engines are needed for the four sub-modules:
+
+1. Actor model requires training engine and rollout engine. The former uses a modern training engine, such as Megatron or FSDP, and the latter requires a modern inference engine, such as SGLang or vllm, as the rollout engine. Let’s think about a small question here. Why can’t we use the logits obtained by the training engine to do sampling and then decode? It seems that it can also be used for rollout? To put it simply, it is too slow, and the decoding effect of using the training engine is naturally not as good as that of a dedicated inference engine.
+2. Critic model requires training engine and inference engine. The former is still a modern training engine, but in the latter, can the value be obtained using the efficient prefill of a modern inference engine? Actually no, the inference of critic model will directly reuse the forward of training engine to get the value, so the inference engine and training engine of critic are actually the same. The reasons are mentioned here again:
+
+> There is a big gap between the kernel fusion of the inference engine and the training engine. When the batch sizes are different, the inference requests are dispatched to different kernels, and then the numerical errors are accumulated layer by layer. When the log probs layer is reached, it reaches a level that cannot be ignored. This problem has existed since the Bert era. The accuracy difference between the training engine and the inference engine cannot be avoided, and it may not be repaired within a month or two if we work hard. So now the inference engine in RLHF is more about accelerating sampling, and reward and embedding have to be calculated using training scripts. It may take several months to study this issue in half a year.
+
+3. The reference model and reward model only require inference, because they do not require training. However, as I mentioned before, the accuracy of log probs and rewards obtained with modern inference engines is not as good as that obtained with modern training engines, so here we choose to use the forward of the training engine to do inference and obtain log probs and rewards.With this understanding, let's look at the collocate strategy. The collocate strategy places the actor's training engine and reference's inference engine on the same resource group, places the critic's training/inference engine and reward's inference engine on the same resource group, and finally places the actor's rollout engine separately.
+
+In contrast, hybrid engine alone emphasizes placing the rollout engine and training engine of the actor model on the same resource group, while collate emphasizes between different sub-modules. As you can see, the engines in the hybrid shared resource group all belong to actors. The difference between the two is significantly greater and they are easier to OOM. Of course, both collocate and hybrid engines can improve GPU utilization, but speed will naturally be lost.
+
+Together, these two concepts are veRL's most powerful contributions. In fact, veRL also provides a placement (resource group) allocation algorithm based on greedy search. However, according to the author's description, this feature is not very attractive and is now relatively unpopular.
+
+## Background
+
+This section is some additional background:
+
+- Modern distributed training frameworks (Megatron-LM, MegaScale, DeepSpeed) all support 3D parallelism, that is, DP PP TP. LLM serving also has corresponding strategies and concepts, but only the model parameters and KV cache will be sharded, and there is no need for optimizers and gradients.
+- Actor model training is compute bounded and usually favors higher TP or PP size. However, a rollout engine with the same high TP or PP size is not efficient. In fact, the rollout engine usually wants to increase the DP size. Therefore, in order to improve the efficiency of the two stages, the training engine and rollout engine of the actor model will adopt different parallel strategies. However, different parallel strategies cause parameter updates between the two stages to require resharding, resulting in significant communication and memory access overhead.
+
+## Hybrid Engine Performance
+
+- In order to provide flexible parallel strategies for users to combine, veRL provides three base classes: `3DParallelWorker`, `FSDPWorker` and `ZeROWorker`, and uses subclasses to support various parallel strategies. In order to achieve parameter update between Training Engine and Rollout Engine, veRL provides 8 transfer protocols, including but not limited to `3D_PROTO`, `DP_PROTO`, `ONE_TO_ALL` and so on.
+- The laboriously constructed Hybrid Engine will naturally show its talents. veRL encourages users to use Hybrid methods to control actor rollout and training. However, the SPMD rollout engine currently used by Hybrid will have a certain reduction in reasoning speed compared to the single controller rollout engine placed separately.- veRL uses mixed precision training, model parameters use BF16, gradient and Adam optimizers use FP32, actor rollout and inference of other models use FP16.
+
+This section records some placement experiences. I hope that in the future I will have the ability to directly analyze and obtain these conclusions based on the physical properties of the machine. Mainly compare these four strategies:
+
+![](./img/placement.png)
+
+1. fully collocate: All submodules are placed on the same resource group, namely DeepSpeed-Chat.
+2. Hybrid: The actor's rollout engine and training engine are placed in the same resource group, and other sub-modules are partially collocated. This is the strategy proposed by veRL, but the original text of veRL actually provides a search method that can greedily search all strategies and select the best strategy.
+3. Split collocate: The actor's training engine and the reference's inference engine are placed on the same resource group. The critic's training/inference engine and the reward's inference engine are placed on the same resource group. Finally, the actor's rollout engine is placed separately. This is the default strategy of OpenRLHF and NeMo-Aligner.
+4. stand alone: ​​All sub-modules are placed alone. OpenRLHF did this in the early days, but naturally not now.
+
+Here is the conclusion directly:
+- Within the range of 16 ~ 64 GPUs, fully collocate has the best effect;
+- 96 ~ 128 GPUs with 34B models or 96 GPUs with 13B models, split collocate works best.
+- Brute force search can always get the best strategy, but the search cost is too high 😂
+- Fully collocate works best when each sub-module can make intensive use of computing resources.
+- When training on a large scale, it is better to place actors and critics separately.
+
+Finally, the single controller at the top of veRL also brings the benefit of making it easier to use rule-based rewards. This is a new story.

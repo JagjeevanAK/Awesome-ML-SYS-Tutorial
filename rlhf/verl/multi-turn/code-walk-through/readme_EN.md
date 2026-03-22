@@ -1013,7 +1013,7 @@ Regarding the part where `SGLangRollout` calls tools, we will elaborate on that 
 2.  Update weights from tensor: Updates the model weights after training is complete.
 3.  Flush cache: Refreshes the KV cache after the model parameters are updated, as the previous KV cache has become invalid.
 
-This involves very deep memory management issues. Readers interested in the SGLang engine's GPU memory management within `verl` are welcome to read 标哥's (Biao Ge's) blog post [optimizing Memory Usage in verl](https://hebiao064.github.io/rl-memory-management), which is written in a very insightful and easy-to-understand manner.
+This involves very deep memory management issues. Readers interested in the SGLang engine's GPU memory management within `verl` are welcome to read Biao He's blog post [optimizing Memory Usage in verl](https://hebiao064.github.io/rl-memory-management), which is written in a very insightful and easy-to-understand manner.
 
 <details>
 <summary>When does SGLangRollout need to flush cache?</summary>
